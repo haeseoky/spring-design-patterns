@@ -14,14 +14,25 @@ import java.util.List;
 @Component
 public class PaymentProcessor {
     
+    // 상수 정의
+    private static final String NO_STRATEGY_MESSAGE = "결제 방법이 선택되지 않았습니다.";
+    private static final String INVALID_AMOUNT_MESSAGE = "결제 금액이 유효하지 않습니다.";
+    private static final String SYSTEM_ERROR_PREFIX = "시스템 오류로 인한 결제 실패: ";
+    private static final String NO_PAYMENT_METHOD_SET = "결제 방법이 설정되지 않음";
+    
     private PaymentStrategy paymentStrategy;
     private final List<PaymentResult> paymentHistory = new ArrayList<>();
     
     /**
      * 결제 전략 설정
      * @param paymentStrategy 사용할 결제 전략
+     * @throws IllegalArgumentException paymentStrategy가 null인 경우
      */
     public void setPaymentStrategy(PaymentStrategy paymentStrategy) {
+        if (paymentStrategy == null) {
+            throw new IllegalArgumentException("결제 전략은 null일 수 없습니다.");
+        }
+        
         this.paymentStrategy = paymentStrategy;
         log.info("결제 전략이 변경되었습니다: {}", paymentStrategy.getPaymentMethodName());
     }
@@ -32,14 +43,27 @@ public class PaymentProcessor {
      * @return 결제 결과
      */
     public PaymentResult processPayment(double amount) {
+        // 전략 유효성 검증
         if (paymentStrategy == null) {
             log.error("결제 전략이 설정되지 않았습니다.");
-            return PaymentResult.failure("결제 방법이 선택되지 않았습니다.", amount, "없음");
+            PaymentResult errorResult = PaymentResult.failure(NO_STRATEGY_MESSAGE, amount, "없음");
+            paymentHistory.add(errorResult);
+            return errorResult;
         }
         
+        // 금액 유효성 검증 강화
         if (amount <= 0) {
             log.error("유효하지 않은 결제 금액: {}", amount);
-            return PaymentResult.failure("결제 금액이 유효하지 않습니다.", amount, paymentStrategy.getPaymentMethodName());
+            PaymentResult errorResult = PaymentResult.failure(INVALID_AMOUNT_MESSAGE, amount, paymentStrategy.getPaymentMethodName());
+            paymentHistory.add(errorResult);
+            return errorResult;
+        }
+        
+        if (Double.isNaN(amount) || Double.isInfinite(amount)) {
+            log.error("잘못된 결제 금액 형식: {}", amount);
+            PaymentResult errorResult = PaymentResult.failure("결제 금액 형식이 올바르지 않습니다.", amount, paymentStrategy.getPaymentMethodName());
+            paymentHistory.add(errorResult);
+            return errorResult;
         }
         
         log.info("결제 처리 시작 - 방법: {}, 금액: {}원", paymentStrategy.getPaymentMethodName(), amount);
@@ -60,10 +84,28 @@ public class PaymentProcessor {
             
             return result;
             
-        } catch (Exception e) {
-            log.error("결제 처리 중 예외 발생", e);
+        } catch (IllegalStateException e) {
+            log.error("결제 전략 상태 오류", e);
             PaymentResult errorResult = PaymentResult.failure(
-                "시스템 오류로 인한 결제 실패: " + e.getMessage(), 
+                "결제 시스템 상태 오류: " + e.getMessage(), 
+                amount, 
+                paymentStrategy.getPaymentMethodName()
+            );
+            paymentHistory.add(errorResult);
+            return errorResult;
+        } catch (SecurityException e) {
+            log.error("결제 보안 오류", e);
+            PaymentResult errorResult = PaymentResult.failure(
+                "보안 검증 실패로 인한 결제 거부", 
+                amount, 
+                paymentStrategy.getPaymentMethodName()
+            );
+            paymentHistory.add(errorResult);
+            return errorResult;
+        } catch (Exception e) {
+            log.error("결제 처리 중 예상치 못한 예외 발생", e);
+            PaymentResult errorResult = PaymentResult.failure(
+                SYSTEM_ERROR_PREFIX + e.getMessage(), 
                 amount, 
                 paymentStrategy.getPaymentMethodName()
             );
@@ -78,22 +120,39 @@ public class PaymentProcessor {
      * @return 결제 가능 여부
      */
     public boolean canProcessPayment(double amount) {
-        if (paymentStrategy == null) {
+        if (paymentStrategy == null || amount <= 0 || Double.isNaN(amount) || Double.isInfinite(amount)) {
             return false;
         }
-        return paymentStrategy.isPaymentPossible(amount);
+        
+        try {
+            return paymentStrategy.isPaymentPossible(amount);
+        } catch (Exception e) {
+            log.warn("결제 가능 여부 확인 중 오류 발생: {}", e.getMessage());
+            return false;
+        }
     }
     
     /**
      * 현재 설정된 결제 전략의 수수료 계산
      * @param amount 결제 금액
      * @return 수수료
+     * @throws IllegalArgumentException 금액이 유효하지 않은 경우
      */
     public double calculateFee(double amount) {
+        if (amount <= 0 || Double.isNaN(amount) || Double.isInfinite(amount)) {
+            throw new IllegalArgumentException("수수료 계산을 위한 금액이 유효하지 않습니다: " + amount);
+        }
+        
         if (paymentStrategy == null) {
             return 0.0;
         }
-        return paymentStrategy.calculateFee(amount);
+        
+        try {
+            return paymentStrategy.calculateFee(amount);
+        } catch (Exception e) {
+            log.warn("수수료 계산 중 오류 발생: {}", e.getMessage());
+            return 0.0;
+        }
     }
     
     /**
@@ -102,9 +161,15 @@ public class PaymentProcessor {
      */
     public String getCurrentPaymentMethod() {
         if (paymentStrategy == null) {
-            return "결제 방법이 설정되지 않음";
+            return NO_PAYMENT_METHOD_SET;
         }
-        return paymentStrategy.getPaymentMethodName();
+        
+        try {
+            return paymentStrategy.getPaymentMethodName();
+        } catch (Exception e) {
+            log.warn("결제 방법 이름 조회 중 오류 발생: {}", e.getMessage());
+            return "결제 방법 조회 실패";
+        }
     }
     
     /**

@@ -2,8 +2,6 @@ package com.ocean.pattern.strategy;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.UUID;
-
 /**
  * 계좌이체 결제 전략 - PaymentStrategy 구현체
  * 은행 계좌이체를 통한 결제 처리를 담당
@@ -19,9 +17,22 @@ public class BankTransferPayment implements PaymentStrategy {
     
     public BankTransferPayment(String bankName, String accountNumber, String accountHolderName, 
                                double balance, String pin) {
-        this.bankName = bankName;
+        if (bankName == null || bankName.trim().isEmpty()) {
+            throw new IllegalArgumentException("은행명은 필수입니다.");
+        }
+        if (accountHolderName == null || accountHolderName.trim().isEmpty()) {
+            throw new IllegalArgumentException("예금주 이름은 필수입니다.");
+        }
+        if (balance < 0) {
+            throw new IllegalArgumentException("계좌 잔액은 0 이상이어야 합니다.");
+        }
+        if (pin == null || !pin.matches("\\d{6}")) {
+            throw new IllegalArgumentException("PIN은 6자리 숫자여야 합니다.");
+        }
+        
+        this.bankName = bankName.trim();
         this.accountNumber = maskAccountNumber(accountNumber);
-        this.accountHolderName = accountHolderName;
+        this.accountHolderName = accountHolderName.trim();
         this.balance = balance;
         this.pin = pin;
     }
@@ -30,9 +41,25 @@ public class BankTransferPayment implements PaymentStrategy {
     public PaymentResult processPayment(double amount) {
         log.info("[계좌이체] 결제 시작 - 금액: {}원, 은행: {}, 계좌: {}", amount, bankName, accountNumber);
         
+        // 입력 유효성 검증
+        if (amount <= 0) {
+            log.warn("[계좌이체] 결제 실패 - 유효하지 않은 금액: {}", amount);
+            return PaymentResult.failure("결제 금액이 유효하지 않습니다.", amount, getPaymentMethodName());
+        }
+        
         if (!isPaymentPossible(amount)) {
-            log.warn("[계좌이체] 결제 실패 - 계좌 잔액 부족");
-            return PaymentResult.failure("계좌 잔액이 부족합니다.", amount, getPaymentMethodName());
+            double dailyLimit = getDailyLimit();
+            double totalAmount = amount + calculateFee(amount);
+            
+            if (totalAmount > balance) {
+                log.warn("[계좌이체] 결제 실패 - 계좌 잔액 부족 (필요: {}, 잔액: {})", totalAmount, balance);
+                return PaymentResult.failure("계좌 잔액이 부족합니다.", amount, getPaymentMethodName());
+            }
+            
+            if (amount > dailyLimit) {
+                log.warn("[계좌이체] 결제 실패 - 일일 한도 초과 (요청: {}, 한도: {})", amount, dailyLimit);
+                return PaymentResult.failure("일일 이체 한도를 초과했습니다.", amount, getPaymentMethodName());
+            }
         }
         
         // 계좌이체 결제 시뮬레이션
@@ -52,7 +79,7 @@ public class BankTransferPayment implements PaymentStrategy {
             // 계좌 잔액 차감
             balance -= totalAmount;
             
-            String transactionId = generateTransactionId();
+            String transactionId = TransactionIdGenerator.generateBankTransfer();
             
             log.info("[계좌이체] 결제 성공 - 거래ID: {}, 수수료: {}원, 잔여 잔액: {}원", 
                     transactionId, fee, balance);
@@ -93,21 +120,24 @@ public class BankTransferPayment implements PaymentStrategy {
     
     /**
      * 계좌번호 마스킹
+     * @param accountNumber 원본 계좌번호
+     * @return 마스킹된 계좌번호
+     * @throws IllegalArgumentException 계좌번호가 유효하지 않은 경우
      */
     private String maskAccountNumber(String accountNumber) {
-        if (accountNumber == null || accountNumber.length() < 4) {
+        if (accountNumber == null || accountNumber.trim().isEmpty()) {
+            throw new IllegalArgumentException("계좌번호가 유효하지 않습니다.");
+        }
+        
+        String cleanAccountNumber = accountNumber.replaceAll("[^0-9]", "");
+        if (cleanAccountNumber.length() < 4) {
             return "***-***-****";
         }
-        String lastFour = accountNumber.substring(accountNumber.length() - 4);
+        
+        String lastFour = cleanAccountNumber.substring(cleanAccountNumber.length() - 4);
         return "***-***-" + lastFour;
     }
     
-    /**
-     * 거래 ID 생성
-     */
-    private String generateTransactionId() {
-        return "BT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-    }
     
     /**
      * 일일 이체 한도 조회
@@ -119,12 +149,16 @@ public class BankTransferPayment implements PaymentStrategy {
     
     /**
      * 계좌에 금액 입금
+     * @param amount 입금 금액
+     * @throws IllegalArgumentException 입금 금액이 0 이하인 경우
      */
     public void deposit(double amount) {
-        if (amount > 0) {
-            balance += amount;
-            log.info("[계좌이체] 입금 완료 - 입금 금액: {}원, 잔액: {}원", amount, balance);
+        if (amount <= 0) {
+            throw new IllegalArgumentException("입금 금액은 0보다 커야 합니다.");
         }
+        
+        balance += amount;
+        log.info("[계좌이체] 입금 완료 - 입금 금액: {}원, 잔액: {}원", amount, balance);
     }
     
     /**

@@ -2,8 +2,6 @@ package com.ocean.pattern.strategy;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.UUID;
-
 /**
  * PayPal 결제 전략 - PaymentStrategy 구현체
  * PayPal을 통한 온라인 결제 처리를 담당
@@ -50,7 +48,7 @@ public class PayPalPayment implements PaymentStrategy {
             // 잔액 차감
             balance -= totalAmount;
             
-            String transactionId = generateTransactionId();
+            String transactionId = TransactionIdGenerator.generatePayPal();
             
             log.info("[PayPal 결제] 결제 성공 - 거래ID: {}, 수수료: {}원, 잔여 잔액: {}원", 
                     transactionId, fee, balance);
@@ -101,12 +99,6 @@ public class PayPalPayment implements PaymentStrategy {
         return "*".repeat(password.length());
     }
     
-    /**
-     * 거래 ID 생성
-     */
-    private String generateTransactionId() {
-        return "PP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-    }
     
     /**
      * PayPal 계정에 금액 추가 (충전)

@@ -201,9 +201,9 @@ class StrategyPatternTest {
         paymentProcessor.setPaymentStrategy(creditCardPayment);
         
         // When
-        paymentProcessor.processPayment(50000);
-        paymentProcessor.processPayment(30000);
-        paymentProcessor.processPayment(700000); // 한도 초과로 실패할 것
+        paymentProcessor.processPayment(50000);  // 성공: 50000 + 1250 = 51250
+        paymentProcessor.processPayment(30000);  // 성공: 30000 + 750 = 30750  
+        paymentProcessor.processPayment(980000); // 실패: 980000 + 24500 = 1004500 > 1000000 한도 초과
         
         // Then
         assertEquals(3, paymentProcessor.getPaymentHistory().size());
