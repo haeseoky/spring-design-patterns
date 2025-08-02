@@ -11,7 +11,9 @@
       "Bash(rm:*)",
       "Bash(git push:*)",
       "mcp__ide__getDiagnostics",
-      "mcp__gemini-cli__ask-gemini"
+      "mcp__gemini-cli__ask-gemini",
+      "Bash(curl:*)",
+      "Bash(pkill:*)"
     ],
     "deny": []
   }

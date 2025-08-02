@@ -49,38 +49,62 @@ public class OrderProjectionHandler {
     }
 
     private void handle(OrderCreatedEvent event) {
-        List<OrderItemView> itemViews = event.getProductItems().stream().map(item -> {
-            Product product = productRepository.findById(item.getProductId()).orElse(new Product());
-            return new OrderItemView(item.getProductId(), product.getName(), item.getQuantity(), product.getPrice());
-        }).collect(Collectors.toList());
+        try {
+            List<OrderItemView> itemViews = event.getProductItems().stream().map(item -> {
+                Product product = productRepository.findById(item.getProductId()).orElse(new Product());
+                return new OrderItemView(item.getProductId(), product.getName(), item.getQuantity(), product.getPrice());
+            }).collect(Collectors.toList());
 
-        OrderReadModel order = new OrderReadModel();
-        order.setId(event.getAggregateId());
-        order.setCustomerInfo(event.getCustomerId());
-        order.setItems(itemViews);
-        order.setTotalAmount(event.getTotalAmount());
-        order.setStatus(event.getStatus());
+            OrderReadModel order = new OrderReadModel();
+            order.setId(event.getAggregateId());
+            order.setCustomerInfo(event.getCustomerId());
+            order.setItems(objectMapper.writeValueAsString(itemViews));
+            order.setTotalAmount(event.getTotalAmount());
+            order.setStatus(event.getStatus());
 
-        List<OrderTimelineView> timeline = new ArrayList<>();
-        timeline.add(new OrderTimelineView(event.getStatus(), "Order created", LocalDateTime.now()));
-        order.setTimeline(timeline);
+            List<OrderTimelineView> timeline = new ArrayList<>();
+            timeline.add(new OrderTimelineView(event.getStatus(), "Order created", LocalDateTime.now()));
+            order.setTimeline(objectMapper.writeValueAsString(timeline));
 
-        orderReadRepository.save(order);
+            orderReadRepository.save(order);
+        } catch (Exception e) {
+            // Handle JSON serialization error
+        }
     }
 
     private void handle(OrderStatusChangedEvent event) {
         orderReadRepository.findById(event.getAggregateId()).ifPresent(order -> {
-            order.setStatus(event.getNewStatus());
-            order.getTimeline().add(new OrderTimelineView(event.getNewStatus(), event.getReason(), LocalDateTime.now()));
-            orderReadRepository.save(order);
+            try {
+                order.setStatus(event.getNewStatus());
+                
+                // Deserialize existing timeline, add new entry, serialize back
+                List<OrderTimelineView> timeline = objectMapper.readValue(order.getTimeline(), 
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, OrderTimelineView.class));
+                timeline.add(new OrderTimelineView(event.getNewStatus(), event.getReason(), LocalDateTime.now()));
+                order.setTimeline(objectMapper.writeValueAsString(timeline));
+                
+                orderReadRepository.save(order);
+            } catch (Exception e) {
+                // Handle JSON serialization error
+            }
         });
     }
 
     private void handle(OrderCancelledEvent event) {
         orderReadRepository.findById(event.getAggregateId()).ifPresent(order -> {
-            order.setStatus("CANCELLED");
-            order.getTimeline().add(new OrderTimelineView("CANCELLED", event.getReason(), LocalDateTime.now()));
-            orderReadRepository.save(order);
+            try {
+                order.setStatus("CANCELLED");
+                
+                // Deserialize existing timeline, add new entry, serialize back
+                List<OrderTimelineView> timeline = objectMapper.readValue(order.getTimeline(), 
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, OrderTimelineView.class));
+                timeline.add(new OrderTimelineView("CANCELLED", event.getReason(), LocalDateTime.now()));
+                order.setTimeline(objectMapper.writeValueAsString(timeline));
+                
+                orderReadRepository.save(order);
+            } catch (Exception e) {
+                // Handle JSON serialization error
+            }
         });
     }
 }
