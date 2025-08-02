@@ -8,7 +8,10 @@
       "Bash(./gradlew:*)",
       "Bash(cat:*)",
       "Bash(ls:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git push:*)",
+      "mcp__ide__getDiagnostics",
+      "mcp__gemini-cli__ask-gemini"
     ],
     "deny": []
   }
