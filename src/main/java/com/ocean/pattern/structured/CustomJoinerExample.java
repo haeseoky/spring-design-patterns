@@ -210,8 +210,6 @@ public class CustomJoinerExample {
                 } catch (ExecutionException e) {
                     completedTasks++;
                     logger.warning("품질 태스크 실패: " + e.getCause().getMessage());
-                } catch (TimeoutException e) {
-                    break;
                 }
             }
             

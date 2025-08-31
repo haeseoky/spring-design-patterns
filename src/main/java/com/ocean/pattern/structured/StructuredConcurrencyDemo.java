@@ -39,7 +39,7 @@ public class StructuredConcurrencyDemo {
         logger.info("모든 데모 완료");
     }
     
-    private void runTaskScopeDemo() {
+    public void runTaskScopeDemo() {
         System.out.println("\n" + "=".repeat(60));
         System.out.println("1. 기본 Task Scope 데모");
         System.out.println("=".repeat(60));
@@ -66,7 +66,7 @@ public class StructuredConcurrencyDemo {
         }
     }
     
-    private void runErrorHandlingDemo() {
+    public void runErrorHandlingDemo() {
         System.out.println("\n" + "=".repeat(60));
         System.out.println("2. 에러 처리 데모");
         System.out.println("=".repeat(60));
@@ -97,7 +97,7 @@ public class StructuredConcurrencyDemo {
         }
     }
     
-    private void runParallelProcessingDemo() {
+    public void runParallelProcessingDemo() {
         System.out.println("\n" + "=".repeat(60));
         System.out.println("3. 병렬 데이터 처리 데모");
         System.out.println("=".repeat(60));
@@ -140,7 +140,7 @@ public class StructuredConcurrencyDemo {
         }
     }
     
-    private void runWebServiceDemo() {
+    public void runWebServiceDemo() {
         System.out.println("\n" + "=".repeat(60));
         System.out.println("4. 웹서비스 집계 데모");
         System.out.println("=".repeat(60));
@@ -182,7 +182,7 @@ public class StructuredConcurrencyDemo {
         }
     }
     
-    private void runCustomJoinerDemo() {
+    public void runCustomJoinerDemo() {
         System.out.println("\n" + "=".repeat(60));
         System.out.println("5. 커스텀 조이너 데모");
         System.out.println("=".repeat(60));

@@ -128,19 +128,17 @@ public class CustomJoinerImplementation {
             
             try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
                 
+                // onComplete 시뮬레이션 - 완료된 작업들을 순차적으로 처리
+                CompletionService<QualityResult> completionService = new ExecutorCompletionService<>(executor);
                 List<Future<QualityResult>> futures = new ArrayList<>();
                 
                 // onFork 시뮬레이션 - 모든 작업 시작
                 for (QualityTask task : tasks) {
                     logger.info("품질 작업 포크: " + task.name());
                     
-                    Future<QualityResult> future = executor.submit(() -> executeQualityTask(task));
+                    Future<QualityResult> future = completionService.submit(() -> executeQualityTask(task));
                     futures.add(future);
                 }
-                
-                // onComplete 시뮬레이션 - 완료된 작업들을 순차적으로 처리
-                CompletionService<QualityResult> completionService = new ExecutorCompletionService<>(executor);
-                futures.forEach(completionService::submit);
                 
                 while (completedCount.get() < tasks.size() && !thresholdMet.get()) {
                     try {
@@ -221,19 +219,17 @@ public class CustomJoinerImplementation {
             
             try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
                 
+                // 합의 완료 모니터링
+                CompletionService<ConsensusVote> completionService = new ExecutorCompletionService<>(executor);
                 List<Future<ConsensusVote>> futures = new ArrayList<>();
                 
                 // 모든 합의 참가자 작업 시작
                 for (ConsensusTask task : tasks) {
                     logger.info("합의 참가자 포크: " + task.participantId());
                     
-                    Future<ConsensusVote> future = executor.submit(() -> executeConsensusTask(task));
+                    Future<ConsensusVote> future = completionService.submit(() -> executeConsensusTask(task));
                     futures.add(future);
                 }
-                
-                // 합의 완료 모니터링
-                CompletionService<ConsensusVote> completionService = new ExecutorCompletionService<>(executor);
-                futures.forEach(completionService::submit);
                 
                 while (completedCount.get() < tasks.size() && !consensusReached.get()) {
                     try {
@@ -427,19 +423,17 @@ public class CustomJoinerImplementation {
             
             try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
                 
+                // 시간 윈도우 모니터링
+                CompletionService<TimeTaskResult> completionService = new ExecutorCompletionService<>(executor);
                 List<Future<TimeTaskResult>> futures = new ArrayList<>();
                 
                 // 모든 작업 시작
                 for (TimeTask task : tasks) {
                     logger.info("시간 윈도우 작업 포크: " + task.taskId());
                     
-                    Future<TimeTaskResult> future = executor.submit(() -> executeTimeTask(task));
+                    Future<TimeTaskResult> future = completionService.submit(() -> executeTimeTask(task));
                     futures.add(future);
                 }
-                
-                // 시간 윈도우 모니터링
-                CompletionService<TimeTaskResult> completionService = new ExecutorCompletionService<>(executor);
-                futures.forEach(completionService::submit);
                 
                 while (completedCount.get() < tasks.size() && !windowExpired.get()) {
                     Instant now = Instant.now();

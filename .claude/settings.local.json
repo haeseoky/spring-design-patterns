@@ -13,7 +13,11 @@
       "mcp__ide__getDiagnostics",
       "mcp__gemini-cli__ask-gemini",
       "Bash(curl:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "WebFetch(domain:openjdk.org)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "WebSearch",
+      "WebFetch(domain:download.java.net)"
     ],
     "deny": []
   }

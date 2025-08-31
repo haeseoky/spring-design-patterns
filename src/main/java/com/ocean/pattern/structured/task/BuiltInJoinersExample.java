@@ -218,17 +218,15 @@ public class BuiltInJoinersExample {
             
             try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
                 
+                // anySuccessfulResultOrThrow 동작: 첫 번째 성공을 기다림
+                CompletionService<DataResponse> completionService = new ExecutorCompletionService<>(executor);
                 List<Future<DataResponse>> futures = new ArrayList<>();
                 
                 // 모든 데이터 소스에 동시 요청
                 for (DataSource source : sources) {
-                    Future<DataResponse> future = executor.submit(() -> fetchFromDataSource(source));
+                    Future<DataResponse> future = completionService.submit(() -> fetchFromDataSource(source));
                     futures.add(future);
                 }
-                
-                // anySuccessfulResultOrThrow 동작: 첫 번째 성공을 기다림
-                CompletionService<DataResponse> completionService = new ExecutorCompletionService<>(executor);
-                futures.forEach(completionService::submit);
                 
                 int attempts = 0;
                 Exception lastException = null;

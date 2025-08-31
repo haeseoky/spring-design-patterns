@@ -414,7 +414,7 @@ public class SubtaskLifecycleExample {
                     }
                     
                     // 너무 많은 태스크가 활성화되면 일부 취소
-                    long activeCoun = activeTasks.stream()
+                    long activeCount = activeTasks.stream()
                         .filter(task -> task.state() == SubtaskState.UNAVAILABLE)
                         .count();
                     

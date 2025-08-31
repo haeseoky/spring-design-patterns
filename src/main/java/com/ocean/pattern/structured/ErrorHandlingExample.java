@@ -194,11 +194,12 @@ public class ErrorHandlingExample {
         for (int attempt = 1; attempt <= maxRetries + 1; attempt++) {
             try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
                 
+                final int finalAttempt = attempt;  // final 변수로 복사
                 Future<String> future = executor.submit(() -> {
                     try {
-                        return processRiskyOperation(input, attempt - 1);
+                        return processRiskyOperation(input, finalAttempt - 1);
                     } catch (Exception e) {
-                        throw new RuntimeException("시도 " + attempt + " 실패", e);
+                        throw new RuntimeException("시도 " + finalAttempt + " 실패", e);
                     }
                 });
                 
